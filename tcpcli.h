@@ -1,20 +1,28 @@
-/** @file tcpcli.h
- *  @note 
- *  @brief 客户端tcp服务实现头文件
- *  
- *  @author 
- *  @date 2019年05月16日 星期四 21时01分38秒
- *  
- *  @note 
- *  
- *  @warning 
- */
+
+/***************************************************************************************
+****************************************************************************************
+* FILE     : tcpcli.h
+* Description  : 
+*            
+* Copyright (c) 2019 by Hikvision. All Rights Reserved.
+* 
+* History:
+* Version      Name        Date                Description
+   0.1         fangyuan9   2019/07/31          Initial Version 1.0.0
+   
+****************************************************************************************
+****************************************************************************************/
 
 #ifndef _TCPCLI_H
 #define _TCPCLI_H 1
 
-void TCPService(stServerNode *pstServer);
-void TCPSendFile(int iSockfd, char *pszPath);
-void TCPRcvFile(int sockfd);
+void TCPService(stServerNode *p_Server);
 
+void TCP_UploadFile(int sockfd,char *p_PathName);
+void TCP_DownloadFile(int sockfd,char *p_PathName);
+
+void TCP_SendFile(int sockfd, char *p_PathName);
+void TCP_RcvFile(int sockfd);   
 #endif
+
+/************************ (C) COPYRIGHT HIKVISION *****END OF FILE****/

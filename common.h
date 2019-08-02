@@ -1,14 +1,17 @@
-/** @file common.h
- *  @note 
- *  @brief 客户端公共函数头
- *  
- *  @author 
- *  @date 2019年05月16日 星期四 10时58分18秒
- *  
- *  @note 
- *  
- *  @warning 
- */
+
+/***************************************************************************************
+****************************************************************************************
+* FILE     : common.h
+* Description  : 
+*            
+* Copyright (c) 2019 by Hikvision. All Rights Reserved.
+* 
+* History:
+* Version      Name        Date                Description
+   0.1         fangyuan9   2019/07/31          Initial Version 1.0.0
+   
+****************************************************************************************
+****************************************************************************************/
 
 #ifndef _COMMON_H
 #define _COMMON_H 1
@@ -69,11 +72,11 @@ extern char                *g_pszTransBuf;         //发送或接收缓存
 extern char                g_szAckBuf[ACK_SIZE];   //接收应答缓存
 extern char                *g_pszSha1Digest;       //用于存储计算接收后文件的摘要
 extern volatile bool       timeout;                //服务器发现计时标志
-/* 全局变量声明区 */
+
 
 
 char *gets_s(char *str, size_t num, FILE *stream);
-bool IsExist(stServerNode *pHead, char* pIP);
+bool IsExist(stServerNode *pHead, char* p_IP);
 void AddNode(stServerNode *pHead, char *pIP, uint16_t usiPort);
 stServerNode *FindNode(stServerNode *pHead, uint16_t iNum);
 uint16_t CountNodes(stServerNode *pHead);
@@ -82,8 +85,10 @@ void DeleteList(stServerNode *pHead);
 
 void ProtocolMenu(void);
 void OperateMenu(void);
-int GetFileSize(const char* pszFilePath);
+int GetFileSize(const char* p_FilePath);
 void PrintWorkDir(void);
-void PrintDirFile(const char* pszDir);
+void PrintDirFile(const char* p_PathName);
 
 #endif
+
+/************************ (C) COPYRIGHT HIKVISION *****END OF FILE****/

@@ -1,15 +1,19 @@
-/** @file tcpcli.c
- *  @note 
- *  @brief 客户端tcp服务实现
- *  
- *  @author 
- *  @date 2019年05月16日 星期四 21时00分46秒
- *  
- *  @note 
- *  
- *  @warning 
- */
 
+/***************************************************************************************
+****************************************************************************************
+* FILE     : tcpcli.c
+* Description  : 
+*            
+* Copyright (c) 2019 by Hikvision. All Rights Reserved.
+* 
+* History:
+* Version      Name        Date                Description
+   0.1         fangyuan9   2019/07/31          Initial Version 1.0.0
+   
+****************************************************************************************
+****************************************************************************************/
+
+/* Includes ------------------------------------------------------------------*/
 #include <stdio.h>
 #include <stdint.h>
 #include <sys/types.h>
@@ -28,288 +32,387 @@
 #include "sha1.h"
 
 
- /**@fn 
- *  @brief  TCP传输文件服务
- *  @param c 参数描述.
- *  @param n 参数描述.
- *  @return 返回描述
- */
-void TCPService(stServerNode *pstServer)
+
+/* Private define ------------------------------------------------------------*/
+#define CONNECT_FAIL -1
+#define SEND_FAIL -1
+#define OPEN_FAIL -1
+#define RECV_FAIL -1
+
+/* Private functions ---------------------------------------------------------*/
+
+/*==================================================================
+* Function      : TCPService   
+* Description   : 对外提供TCP服务
+* Input Para    : p_Server:服务器指针 指向可用服务器
+* Output Para   : 无
+* Return Value  : 无
+==================================================================*/
+void TCPService(stServerNode *p_Server)
 {
-    assert(pstServer != NULL);
+    assert(p_Server != NULL);
 
     struct sockaddr_in stServerAddr;
-    socklen_t uliSerAddrLen = sizeof(stServerAddr);
-    int iSockfd;
-    int iRet = 0;
+	int sockfd;  
     char cBuf;//临时变量，清输入缓存用
-    char *pszPath = (char*)malloc(PATH_MAX);    //装载目录
-    if(NULL == pszPath)
+	uint16_t OperateNum = 0;
+    char *p_PathName = (char*)malloc(PATH_MAX);    //存储目录路径名
+    	
+	if(NULL == p_PathName)
     {
-        printf("内存申请失败！\n");
+        printf("内存申请失败!\n");
         return;
     }
     
-    if ((iSockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)
+	/* 套接字资源申请失败直接退出 */
+    if ((sockfd = socket(AF_INET, SOCK_STREAM, 0)) < 0)  
     {
         fprintf(stderr, "%s\n",strerror(errno));
         return;
     }
     
     stServerAddr.sin_family = AF_INET;
-    stServerAddr.sin_addr.s_addr = inet_addr(pstServer->pszIP);
+    stServerAddr.sin_addr.s_addr = inet_addr(p_Server->pszIP);
     stServerAddr.sin_port = htons(TCP_PORT);
-    if(-1 == connect(iSockfd, (struct sockaddr *) &stServerAddr, sizeof(stServerAddr)))
+	
+    if(CONNECT_FAIL == connect(sockfd, (struct sockaddr *) &stServerAddr, sizeof(stServerAddr)))
     {
         fprintf(stderr, "%s\n",strerror(errno));
         return;
     }
 
-    uint16_t usiNum;
-
-    while (1)
+    while(1)
     {
-        OperateMenu();//操作选择界面
-        scanf("%hu", &usiNum);
-        while (((cBuf = getchar()) != EOF) && (cBuf != '\n'));//使用getchar()获取输入缓冲区字符，直到获取的c是'\n'或文件结尾符EOF为止
+		/* 操作选择界面 */
+        OperateMenu();
+		
+        scanf("%hu", &OperateNum);
+        while (((cBuf = getchar()) != EOF) && (cBuf != '\n'));
 
         /* 上传操作 */
-        if (1 == usiNum)
+        if(1 == OperateNum)
         {
-            usiNum = 0;
+            OperateNum = 0;
             g_enTransState = TRANS_UPLOAD;   //置为上传状态
-            iRet = send(iSockfd, (TRANS_STATE_E*)&g_enTransState, sizeof(TRANS_STATE_E), 0);
-            if(-1 == iRet) 
-            {  
-                fprintf(stderr, "%s\n",strerror(errno));
-                return;
-            }
-            else
-            {
-                /* 接收本次发送应答 */
-                if((recv(iSockfd, g_szAckBuf, ACK_SIZE, 0)) < 0)
-                {            
-                    fprintf(stderr, "%s\n", strerror(errno));
-                    return;
-                }
-                if(0 == strncmp(g_szAckBuf, "ok", 2))
-                {
-                    printf("服务器已准备好接收文件\n");
-                }
-            }
-
-            PrintWorkDir(); //打印当前工作目录
-            printf("请输入需要查看的目录绝对路径: ");
-            gets_s(pszPath, PATH_MAX, stdin);  //获取输入目录
-            PrintDirFile(pszPath);  //输出输入目录下的文件及目录
-            
-            printf("输入需要上传的文件名:\n");
-            gets_s(g_pstComTransInfo->szFilename, NAME_MAX, stdin);   //获取上传文件名
-            strncat(pszPath, "/", 1);
-            strncat(pszPath, g_pstComTransInfo->szFilename, sizeof(g_pstComTransInfo->szFilename));
-            printf("文件绝对路径: %s\n", pszPath);
-
-            /* 上传之前获取文件SHA1值 */
-            SHA1File(pszPath, g_pstComTransInfo->szSHA1);
-            printf("待上传文件SHA1:      %s\n", g_pstComTransInfo->szSHA1);
-            /* 获取文件大小 */
-            g_pstComTransInfo->iFileSize = GetFileSize(pszPath);
-            printf("待上传文件大小: %d\n", g_pstComTransInfo->iFileSize);
-            
-            //g_pstComTransInfo->enTransFlag = TRANS_REQ;         //置为上传请求
-
-            /* 发送文件相关信息 */
-            iRet = send(iSockfd, (COM_TRANS_INFO_S*)g_pstComTransInfo, sizeof(COM_TRANS_INFO_S), 0);
-            if(-1 == iRet) 
-            {  
-                fprintf(stderr, "%s\n",strerror(errno));
-                return;
-            }
-            else
-            {
-                /* 接收本次发送应答 */
-                if((recv(iSockfd, g_szAckBuf, ACK_SIZE, 0)) < 0)
-                {            
-                    fprintf(stderr, "%s\n", strerror(errno));
-                    return;
-                }
-                if(0 == strncmp(g_szAckBuf, "ok", 2))
-                {
-                    printf("服务器已准备接收文件\n");
-                }
-                printf("服务器已接收到%d字节文件相关信息\n", iRet);
-            }
-
-            TCPSendFile(iSockfd, pszPath);
-
-            #if 0
-            printf("睡眠7s继续发送数据\n");
-            sleep(7);
-            TCPSendFile(iSockfd, pszPath);
-            #endif
+            TCP_UploadFile(sockfd,p_PathName);
         }
+		
         /* 下载操作 */
-        else
+        else if( 2 == OperateNum)
         {
-            usiNum = 0;
-            //发送查看服务器目录命令
+            OperateNum = 0;
             g_enTransState = TRANS_DOWNLOAD;   //置为下载状态
-            iRet = send(iSockfd, (TRANS_STATE_E*)&g_enTransState, sizeof(TRANS_STATE_E), 0);
-            if(-1 == iRet) 
-            {  
-                fprintf(stderr, "%s\n",strerror(errno));
-                return;
-            }
-            else
-            {
-                /* 接收本次发送应答 */
-                if((recv(iSockfd, g_szAckBuf, ACK_SIZE, 0)) < 0)          
-                {            
-                    fprintf(stderr, "%s\n", strerror(errno));
-                    return;
-                }
-                if(0 == strncmp(g_szAckBuf, "ok1", 3))
-                {
-                    printf("服务器已准备好查看\n");
-                }
-            }
+            TCP_DownloadFile(sockfd,p_PathName);
+        }
+		
+		/* 退出程序 */
+		else
+		{
+			OperateNum = 0;
+			
+			/* 释放资源 */
+			if(NULL != p_PathName)
+			{
+				free(p_PathName);
+				p_PathName = NULL;
+			}
+			close (sockfd);
+			return;
+		}
+    }
 
-            //接收当前工作目录
-            if(recv(iSockfd, pszPath, PATH_MAX, 0) < 0)
-            {            
-                fprintf(stderr, "%s\n", strerror(errno));
-                return;
-            }
-            else
-            {
-                printf("服务器当前工作目录: %s\n", pszPath);
-                if(-1 == send(iSockfd, "ok", 2, 0))
-                {
-                    fprintf(stderr, "%s\n", strerror(errno));
-                    return;
-                }
-            }
+	/* 释放资源 */
+    if(NULL != p_PathName)
+	{
+		free(p_PathName);
+		p_PathName = NULL;
+	}
+    close (sockfd);
+}
 
-            /* 查看远端服务器文件 */
-            printf("请输入需要查看的目录绝对路径: ");
-            gets_s(pszPath, PATH_MAX, stdin);  //获取输入目录
-            send(iSockfd, pszPath, PATH_MAX, 0);
-            printf("服务器该目录文件列表如下:\n");
-            printf("*******目录文件列表*******\n");
-            while(1)
-            {
-                if(recv(iSockfd, g_pstComTransInfo->szFilename, NAME_MAX, 0) < 0)
-                {            
-                    fprintf(stderr, "%s\n", strerror(errno));
-                    return;
-                }
-                else
-                {
-                    if(0 == strncmp(g_pstComTransInfo->szFilename, "**", 2))
-                    {
-                        break;
-                    }
-                    printf("%s\n", g_pstComTransInfo->szFilename);
-                }
-            }
-            printf("*******目录文件列表*******\n");
-            
-            /* 选择服务器文件 */
-            printf("输入需要下载的文件名:\n");
-            gets_s(g_pstComTransInfo->szFilename, NAME_MAX, stdin);   //获取下载文件名
-            strncat(pszPath, "/", 1);
-            strncat(pszPath, g_pstComTransInfo->szFilename, sizeof(g_pstComTransInfo->szFilename));
-            printf("文件绝对路径: %s\n", pszPath);
-            send(iSockfd, pszPath, PATH_MAX, 0); //将待下载文件绝对路径发给服务器
 
-            /* 接收文件相关信息 */
-            if(-1 == recv(iSockfd, (COM_TRANS_INFO_S*)g_pstComTransInfo, sizeof(COM_TRANS_INFO_S), 0))
-            {
-                fprintf(stderr, "%s\n",strerror(errno));
-                return;
-            }
 
-            printf("SHA1: %s\n", g_pstComTransInfo->szSHA1);
-            printf("FileName: %s\n", g_pstComTransInfo->szFilename);
-            printf("FileSize: %d\n", g_pstComTransInfo->iFileSize);
-            //printf("enTransFlag: %d\n", g_pstComTransInfo->enTransFlag);
-
-            //接收文件内容
-            TCPRcvFile(iSockfd);
+/*==================================================================
+* Function      : TCP_UploadFile   
+* Description   : 文件上传
+* Input Para    : sockfd:通信套接字, p_PathName:文件路径
+* Output Para   : 无
+* Return Value  : 无
+==================================================================*/
+void TCP_UploadFile(int sockfd,char *p_PathName)    //需要改进的地方：使用了全局变量g_pstComTransInfo 需要改为参数传递的方式
+{
+	int rev = 0;
+	
+	rev = send(sockfd, (TRANS_STATE_E*)&g_enTransState, sizeof(TRANS_STATE_E), 0);
+			
+    if(SEND_FAIL == rev) 
+    {  
+        fprintf(stderr, "%s\n",strerror(errno));
+        return;
+    }
+			
+    else
+    {
+		/* 接收本次发送应答 */
+        if((recv(sockfd, g_szAckBuf, ACK_SIZE, 0)) < 0)
+        {            
+            fprintf(stderr, "%s\n", strerror(errno));
+            return;
+        }
+		
+        if(0 == strncmp(g_szAckBuf, "ok", 2))
+        {
+            printf("服务器已准备好接收文件\n");
         }
     }
 
-    free(pszPath);
-    close (iSockfd);
+    PrintWorkDir(); //打印当前工作目录
+	
+	printf("请输入需要查看的目录绝对路径: ");
+    gets_s(p_PathName, PATH_MAX, stdin);  //获取输入目录
+	
+	PrintDirFile(p_PathName);  //输出指定目录下文件信息
+            
+    printf("输入需要上传的文件名:\n");
+    gets_s(g_pstComTransInfo->szFilename, NAME_MAX, stdin);   //获取上传文件名
+	
+    strncat(p_PathName, "/", 1);
+    strncat(p_PathName, g_pstComTransInfo->szFilename, sizeof(g_pstComTransInfo->szFilename));
+	
+    printf("文件绝对路径为: %s\n", p_PathName);
+
+
+    /* 上传之前获取文件SHA1值 */
+    SHA1File(p_PathName, g_pstComTransInfo->szSHA1);
+    printf("待上传文件SHA1:      %s\n", g_pstComTransInfo->szSHA1);
+    
+	/* 获取文件大小 */
+    g_pstComTransInfo->iFileSize = GetFileSize(p_PathName);
+    printf("待上传文件大小: %d字节\n", g_pstComTransInfo->iFileSize);
+            
+    /* 发送文件相关信息 */
+    rev = send(sockfd, (COM_TRANS_INFO_S*)g_pstComTransInfo, sizeof(COM_TRANS_INFO_S), 0);
+		
+    if(SEND_FAIL == rev) 
+    {  
+        fprintf(stderr, "%s\n",strerror(errno));
+        return;
+    }
+			
+    else
+    {
+        /* 接收本次发送应答 */
+        if((recv(sockfd, g_szAckBuf, ACK_SIZE, 0)) < 0)
+        {            
+            fprintf(stderr, "%s\n", strerror(errno));
+            return;
+        }
+				
+        if(0 == strncmp(g_szAckBuf, "ok", 2))
+        {
+			printf("服务器已准备接收文件\n");
+        }
+			
+        printf("服务器已接收到%d字节文件属性信息\n", rev);
+    }
+
+    TCP_SendFile(sockfd, p_PathName);
+
+    #if 0
+    printf("睡眠7s继续发送数据\n");
+    sleep(7);
+    TCP_SendFile(sockfd, p_PathName);
+    #endif
 }
 
- /**@fn 
- *  @brief  TCP发送函数
- *  @param c 参数描述.
- *  @param n 参数描述.
- *  @return 返回描述
- */
-void TCPSendFile(int iSockfd, char *pszPath)
+
+
+/*==================================================================
+* Function      : TCP_DownloadFile   
+* Description   : 文件下载
+* Input Para    : sockfd:通信套接字, p_PathName:文件路径
+* Output Para   : 无
+* Return Value  : 无
+==================================================================*/ 
+void TCP_DownloadFile(int sockfd,char *p_PathName)
 {
-    if(NULL == pszPath)
+
+	int rev = 0; 
+	
+	rev = send(sockfd, (TRANS_STATE_E*)&g_enTransState, sizeof(TRANS_STATE_E), 0);
+		
+	if(SEND_FAIL == rev) 
+	{  
+		fprintf(stderr, "%s\n",strerror(errno));
+		return;
+	}
+	
+	else
+	{
+		/* 接收本次发送应答 */
+		if((recv(sockfd, g_szAckBuf, ACK_SIZE, 0)) < 0)          
+		{            
+			fprintf(stderr, "%s\n", strerror(errno));
+			return;
+		}
+		
+		if(0 == strncmp(g_szAckBuf, "ok1", 3))
+		{
+			printf("服务器已准备好查看\n");
+		}
+	}
+
+	/* 接收当前工作目录 */
+	if(recv(sockfd, p_PathName, PATH_MAX, 0) < 0)
+	{            
+		fprintf(stderr, "%s\n", strerror(errno));
+		return;
+	}
+	
+	else
+	{
+		printf("服务器当前工作目录: %s\n", p_PathName);
+		
+		if(SEND_FAIL == send(sockfd, "ok", 2, 0))
+		{
+			fprintf(stderr, "%s\n", strerror(errno));
+			return;
+		}
+	}
+
+	/* 查看远端服务器文件 */
+	printf("请输入需要查看的目录绝对路径: ");
+	
+	/* 获取输入目录 */
+	gets_s(p_PathName, PATH_MAX, stdin);  
+	send(sockfd, p_PathName, PATH_MAX, 0);
+	
+	printf("服务器该目录文件列表如下:\n");
+	printf("*******目录文件列表*******\n");
+	
+	while(1)
+	{
+		if(recv(sockfd, g_pstComTransInfo->szFilename, NAME_MAX, 0) < 0)
+		{            
+			fprintf(stderr, "%s\n", strerror(errno));
+			return;
+		}
+		
+		else
+		{
+			if(0 == strncmp(g_pstComTransInfo->szFilename, "**", 2))
+			{
+				break;
+			}
+			
+			printf("%s\n", g_pstComTransInfo->szFilename);
+		}
+	}
+	printf("*******目录文件列表打印完毕*******\n");
+	
+	/* 选择服务器文件 */
+	printf("输入需要下载的文件名:\n");
+	
+	/* 获取下载文件名 */
+	gets_s(g_pstComTransInfo->szFilename, NAME_MAX, stdin);   
+	
+	strncat(p_PathName, "/", 1);
+	strncat(p_PathName, g_pstComTransInfo->szFilename, sizeof(g_pstComTransInfo->szFilename));
+	
+	printf("文件绝对路径为: %s\n", p_PathName);
+	
+	/* 将待下载文件绝对路径发给服务器 */
+	send(sockfd, p_PathName, PATH_MAX, 0); 
+
+	/* 接收文件相关信息 */
+	if(-1 == recv(sockfd, (COM_TRANS_INFO_S*)g_pstComTransInfo, sizeof(COM_TRANS_INFO_S), 0))
+	{
+		fprintf(stderr, "%s\n",strerror(errno));
+		return;
+	}
+
+	printf("SHA1: %s\n", g_pstComTransInfo->szSHA1);
+	printf("FileName: %s\n", g_pstComTransInfo->szFilename);
+	printf("FileSize: %d字节\n", g_pstComTransInfo->iFileSize);
+	
+	/* 接收文件内容 */
+	TCP_RcvFile(sockfd);
+}
+
+
+/*==================================================================
+* Function      : TCP_SendFile
+* Description   : 实现文件发送
+* Input Para    : sockfd:通信套接字, p_PathName:文件路径
+* Output Para   : 无
+* Return Value  : 无
+==================================================================*/
+void TCP_SendFile(int sockfd, char *p_PathName)    //0802需要改的地方：将g_pszTransBuf通过参数传递进来 不要直接使用全局变量
+{
+    if(NULL == p_PathName)
     {
-        printf("传入参数错误！\n");
+        printf("文件路径名错误!\n");
         return;
     }
 
     int length = 0;
-    int iRet = 0;
-    int ifd = open(pszPath, O_RDONLY);
-    if (-1 == ifd)
+    int rev = 0;   
+	
+    int fd = open(p_PathName, O_RDONLY);
+	
+    if (OPEN_FAIL == fd)
     {
         fprintf(stderr, "%s\n",strerror(errno));
         return;
     }
 
-    while ((length = read(ifd, g_pszTransBuf, BUFFER_SIZE)) > 0)
+    while ((length = read(fd, g_pszTransBuf, BUFFER_SIZE)) > 0)    //0802:g_pszTransBuf  在while循环中将所有数据发送出去 一次读取BUFFER_SIZE 实际读到的数据length
     {
-        //printf("读取%d字节消息\n", length);   //发送
-        if((iRet = send(iSockfd, g_pszTransBuf, length, 0)) < 0)          
+        if((rev = send(sockfd, g_pszTransBuf, length, 0)) < 0)            
         {            
-            printf("%s文件发送失败!\n", pszPath);
+            printf("%s文件发送失败!\n", p_PathName);
             break; 
         }
 
         /* 接收本次发送应答 */
-        if(recv(iSockfd, g_szAckBuf, ACK_SIZE, 0) < 0)          
+        if(recv(sockfd, g_szAckBuf, ACK_SIZE, 0) < 0)          
         {            
             fprintf(stderr, "%s\n", strerror(errno));
             break;
         }
+		
         if(0 == strncmp(g_szAckBuf, "ok", 2))
         {
             ;
-            //printf("发送%d字节消息成功\n", iRet);
         }
     }
-   
-    printf("%s文件发送成功!\n", pszPath); 
+	
+    printf("%s文件发送成功!\n", p_PathName); 
 
-    close(ifd);
+    close(fd);
 }
 
  
- /**@fn 
- *  @brief  TCP接收函数
- *  @param c 参数描述.
- *  @param n 参数描述.
- *  @return 返回描述
- */
-void TCPRcvFile(int sockfd)
+/*==================================================================
+* Function      : TCPRcvFile
+* Description   : 实现文件接收
+* Input Para    : sockfd:通信套接字
+* Output Para   : 无
+* Return Value  : 无
+==================================================================*/
+void TCP_RcvFile(int sockfd)   
 {
-    fd_set stReadFd;
-    //struct timeval sttv = {0, 0};
-    int ifd;
-    int i = 0;  //用于超时计时
-    int iRet;   //用于存储返回值
-    int iRevSize = 0;   //用于接收文件大小计数
-    ifd = open(g_pstComTransInfo->szFilename, O_RDWR | O_CREAT, 0664);
-    if(-1 == ifd)
+    fd_set ReadFds;
+
+    int fd;    
+    int TimeoutCount = 0; 
+    int rev = 0;   
+    int filesize = 0; 
+    
+	/* 根据服务器文件名字在本地创建文件 */
+	fd = open(g_pstComTransInfo->szFilename, O_RDWR | O_CREAT, 0664);   
+	
+    if(OPEN_FAIL == fd)
     {
         fprintf(stderr, "%s\n",strerror(errno));
         return;
@@ -317,62 +420,73 @@ void TCPRcvFile(int sockfd)
 
     while (1)
     {
-        FD_ZERO(&stReadFd);
-        FD_SET(sockfd, &stReadFd);
-        //sttv.tv_sec = 3;
-        //sttv.tv_usec = 0;
-        //select(sockfd+1, &stReadFd, NULL, NULL, &sttv);
-        select(sockfd+1, &stReadFd, NULL, NULL, NULL);
+        FD_ZERO(&ReadFds);
+        FD_SET(sockfd, &ReadFds);
+		
+        select(sockfd+1, &ReadFds, NULL, NULL, NULL);
         
-        if(FD_ISSET(sockfd, &stReadFd))
+        if(FD_ISSET(sockfd, &ReadFds))
         {
-            i = 0;  //超时时间内收到数据重新计数
-            iRet = recv(sockfd, (char*)g_pszTransBuf, BUFFER_SIZE, 0);
-            if(-1 == iRet)
+            TimeoutCount = 0;  
+            
+			rev = recv(sockfd, (char*)g_pszTransBuf, BUFFER_SIZE, 0);
+            
+			if(-1 == rev)
             {
                 fprintf(stderr, "%s\n",strerror(errno));
                 return;
             }
             
-            if(-1 == write(ifd, g_pszTransBuf, iRet))
+            if(-1 == write(fd, g_pszTransBuf, rev))
             {
                 fprintf(stderr, "%s\n",strerror(errno));
                 return;
             }
 
-            iRevSize += iRet;
+            filesize += rev;
             
-            //发送响应
-            iRet = send(sockfd, "ok", 2, 0);
-            if(-1 == iRet)
+            /* 发送响应 */
+            rev = send(sockfd, "ok", 2, 0);
+			
+            if(-1 == rev)
             {
                 fprintf(stderr, "%s\n",strerror(errno));
                 return;
             }
 
-            //文件接收计数达到文件大小则接收结束
-            if(iRevSize == g_pstComTransInfo->iFileSize)
+            /* 文件接收计数达到文件大小则接收结束 */
+            if(filesize == g_pstComTransInfo->iFileSize)
             {
                 break;
             }
         }
+		
         else
         {
-            printf("超时%d次,达到3次本次传输退出!\n", ++i);
-            if(i == 3)
+            printf("超时%d次,超时3次本次传输将退出!\n", ++TimeoutCount);
+			
+            if(TimeoutCount == 3)
             {
-                printf("网络异常，文件传输未完成!\n");
-                close(ifd);
+                printf("通信异常，本次文件传输未完成!\n");
+                close(fd);
                 break;
             }
         }
     }
     
-
     SHA1File(g_pstComTransInfo->szFilename, g_pszSha1Digest);
+	
     printf("SHA1: %s\n", g_pszSha1Digest);
+	
     if(0 == strncmp(g_pstComTransInfo->szSHA1, g_pszSha1Digest, 40))
     {
         printf("SHA1相同，文件下载正常\n");
     }
+	
 }
+
+/************************ (C) COPYRIGHT HIKVISION *****END OF FILE****/
+
+
+ 
+

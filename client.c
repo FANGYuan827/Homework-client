@@ -1,15 +1,19 @@
-/** @file  client.c
- *  @note 
- *  @brief 文件传输客户端
- *
- *  @author     
- *  @date       
- *
- *  @note 
- *
- *  @warning 
- */
 
+/***************************************************************************************
+****************************************************************************************
+* FILE     : client.c
+* Description  : 
+*            
+* Copyright (c) 2019 by Hikvision. All Rights Reserved.
+* 
+* History:
+* Version      Name        Date                Description
+   0.1         fangyuan9   2019/07/31          Initial Version 1.0.0
+   
+****************************************************************************************
+****************************************************************************************/
+
+/* Includes ------------------------------------------------------------------*/
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -21,180 +25,101 @@
 #include <errno.h>
 #include <pthread.h>
 #include <arpa/inet.h>
+
 #include "common.h"
 #include "tcpcli.h"
 #include "udpcli.h"
+#include "multicast.h"
 
 
-
- /**@fn     CountTime
- *  @brief  服务器发现计时线程函数
- *  @param c 参数描述
- *  @param n 参数描述
- *  @return 返回描述
- */
-void *CountTime(void *arg)
+/*==================================================================
+* Function      : main   
+* Description   : 主函数
+* Input Para    : 
+* Output Para   : 无
+* Return Value  : 无
+==================================================================*/
+int main(int argc,const char *argv[])
 {
-    timeout = false;
-    sleep(1);
-    printf("超时时间到!\n");
-    timeout = true;
-}
+    char UserInput = '\0';
+    char cBuf = 0;              //用于清空输入尾部的换行符
+	uint16_t UserInputNum = 0;
+    uint16_t ServerNum = 0;        //选择服务编号变量
+    uint16_t ServerCount = 0;   //在线服务器总数
+    stServerNode *p_ServerInUse = NULL; //用于存储待连接的服务器信息  pstServer
 
- /**@fn     ServerSearch
- *  @brief  服务器发现函数
- *  @param c 参数描述
- *  @param n 参数描述
- *  @return 返回描述
- */
-int16_t ServerSearch(stServerNode *pHead)
-{
-    int sockfd;
-    struct sockaddr_in stMcastAddr, stServerAddr;
-    char szBuf[128];
-    char szServerAddr[INET_ADDRSTRLEN];
-    int iLenServerAddr = sizeof(stServerAddr);
-    uint16_t usiServerPort = 0;
-    
-    memset(szBuf, 0, sizeof(szBuf));
-    memset(&stMcastAddr, 0, sizeof(stMcastAddr));
-    memset(&stServerAddr, 0, iLenServerAddr);
-    
-    /* 设置socket为非阻塞 */
-    sockfd = socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
-    if (-1 == sockfd)
-    { 
-        fprintf(stderr, "%s\n",strerror(errno));
-        return -1;
-    }
-    
-    /* 填充多播地址 */
-    stMcastAddr.sin_family = AF_INET;
-    stMcastAddr.sin_addr.s_addr = inet_addr(MCAST_ADDR);
-    stMcastAddr.sin_port = htons(MCAST_PORT);
-    
-    //while (1)
-    {   
-        /* 向局域网内多播地址发送多播内容 */
-        printf("开始发送多播数据，探测服务器...\n");
-        int iRet = sendto(sockfd, MCAST_DATA, sizeof(MCAST_DATA), 0, (struct sockaddr*)&stMcastAddr, sizeof(stMcastAddr));
-        if(0 > iRet)
-        {
-            fprintf(stderr, "%s\n",strerror(errno));
-            return -1;
-        }
-        else
-        {
-            /* 10s内未收到服务器端回复信息视为未找到服务器 */
-            pthread_t tid;  ///计时线程id
-            pthread_create(&tid, NULL, CountTime, NULL);
-            pthread_detach(tid);///分离线程
-            timeout = false;
-            
-            /* 计时10s内一直查收服务器发来的信息 */
-            while (false == timeout)
-            {
-                iRet = recvfrom(sockfd, szBuf, sizeof(szBuf), 0, (struct sockaddr*)&stServerAddr, &iLenServerAddr);
-                if (-1 != iRet)
-                {
-                    memset(szServerAddr, 0, sizeof(szServerAddr));                    
-                    inet_ntop(AF_INET, &stServerAddr.sin_addr, szServerAddr, sizeof(szServerAddr));
-                    usiServerPort = ntohs(stServerAddr.sin_port);
-                    printf("服务器IP: %s port: %hu\n", szServerAddr, usiServerPort);
-
-                    if (false == IsExist(pHead, szServerAddr))  //检查链表中IP是否存在
-                    {
-                        AddNode(pHead, szServerAddr, usiServerPort);
-                    }
-                }
-            }
-        }
-    }
-
-    return CountNodes(pHead);
-}
-
-
- /**@fn     main
- *  @brief  主函数
- *  @param c 参数描述
- *  @param n 参数描述
- *  @return 返回描述
- */
-int main(void)
-{
-    char cTemp = '\0';
-    char cBuf;              //用于清空输入尾部的换行符
-    uint16_t usiNum = 0;    //选择服务编号变量
-    uint16_t usiNodes = 0;  //存储在线服务器总数
-    stServerNode *pstServer = NULL; //用于存储待连接的服务器信息
-
-    stServerNode *pHead = (stServerNode*)malloc(sizeof(stServerNode));
-    if (NULL == pHead)
+    stServerNode *p_ServerListHead = (stServerNode*)malloc(sizeof(stServerNode));   //pHead:新建服务器链表头结点
+	
+    if (NULL == p_ServerListHead)
     {
         printf("内存申请失败\n");
-        return 1;
+        return -1;
     }
 
-    pHead->pstNext = NULL;
-
-    while (0 == (usiNodes = ServerSearch(pHead)))
+    p_ServerListHead->pstNext = NULL;
+	
+    while (0 == (ServerCount = ServerSearch(p_ServerListHead)))
     {
-        printf("未找到服务器，是否继续搜索？是(Y)/任意键结束搜索并退出程序:");
-        scanf("%c", &cTemp);
+        printf("无可用服务器,是否继续搜索?\n输入Y继续,输入其他值结束搜索并退出程序\n");
+        scanf("%c", &UserInput);
+		
         while (((cBuf = getchar()) != EOF) && (cBuf != '\n'));//使用getchar()获取输入缓冲区字符，直到获取的c是'\n'或文件结尾符EOF为止
 
-        if ('Y' == cTemp)
+        if ('Y' == UserInput)
         {
-            cTemp = '\0';
+            UserInput = '\0';
             continue;
         }
+		
         else
         {
-            printf("未找到服务器，用户退出！\n");
+            printf("无可用服务器，程序退出\n");
             return 0;
         }
     }
 
-    printf("**********找到的服务器列表************\n");
-    PrintNode(pHead);
-    printf("*************服务器列表***************\n");
+    printf("**********可用服务器列表如下************\n");
+    PrintNode(p_ServerListHead);
+    printf("**********可用服务器列表打印完毕***************\n");
     
     printf("选择需要连接服务器序号:\n");
-    scanf("%hu", &usiNum);
-    while (usiNum <= 0 || usiNum > usiNodes)
+    scanf("%hu", &ServerNum);
+	
+    while (ServerNum <= 0 || ServerNum > ServerCount)
     {
-        printf("没有您要连接的服务器，请重新输入:\n");
-        scanf("%hu", &usiNum);
+        printf("服务器序号输入错误，请重新输入:\n");
+        scanf("%hu", &ServerNum);
         while (((cBuf = getchar()) != EOF) && (cBuf != '\n'));
     }
 
-    pstServer = FindNode(pHead, usiNum);
-    printf("准备连接服务器[%s:%hu]\n", pstServer->pszIP, pstServer->usiPort);
+    p_ServerInUse = FindNode(p_ServerListHead, ServerNum);
+    printf("准备连接服务器[%s:%hu]\n", p_ServerInUse->pszIP, p_ServerInUse->usiPort);
 
     /* 全局变量内存申请 */
-    //文件信息结构
+	
+    /* 文件信息结构 */
     g_pstComTransInfo = (COM_TRANS_INFO_S*)malloc(sizeof(COM_TRANS_INFO_S));
-    if (NULL == g_pstComTransInfo)
+    
+	if (NULL == g_pstComTransInfo)
     {
         printf("内存申请失败\n");
-        return 1;
+        return -1;
     }
 
-    //发送或接收缓存
+    /* 发送或接收缓存 */
     g_pszTransBuf = (char*)malloc(BUFFER_SIZE);
     if(NULL == g_pszTransBuf)
     {
         printf("内存申请失败！\n");
-        return 1;
+        return -1;
     }
 
-    //用于存储计算接收后文件的摘要
+    /*用于存储计算接收后文件的摘要 */
     g_pszSha1Digest = (char*)malloc(COM_SHA1DIGEST_LEN);
     if(NULL == g_pszSha1Digest)
     {
         printf("内存申请失败！\n");
-        return 1;
+        return -1;
     }
 
     /* 全局变量内存初始化 */
@@ -202,26 +127,45 @@ int main(void)
     memset(g_pszTransBuf, 0, BUFFER_SIZE);
     memset(g_pszSha1Digest, 0, COM_SHA1DIGEST_LEN);
 
-    ProtocolMenu();
-    scanf("%hu", &usiNum);
 	
-    if (1 == usiNum)
+    ProtocolMenu();
+    scanf("%hu", &UserInputNum);
+	
+	/* 根据输入序号选择不同协议 */
+    if (1 == UserInputNum)
     {
-        UDPService(pstServer);
+        UDPService(p_ServerInUse);
     }
-    else
+	
+    else if(2 == UserInputNum)
     {
-        TCPService(pstServer);
+        TCPService(p_ServerInUse);
     }
 
-    DeleteList(pHead);  //释放链表资源
+	
+	/* 程序结束之前，释放所有资源 */
+    DeleteList(p_ServerListHead);  
 
-    free(g_pstComTransInfo);
-    g_pstComTransInfo = NULL;
-    free(g_pszTransBuf);
-    g_pszTransBuf = NULL;
-    free(g_pszSha1Digest);
-    g_pszSha1Digest = NULL;
-
+	if(NULL != g_pstComTransInfo)
+    {
+		free(g_pstComTransInfo);
+		g_pstComTransInfo = NULL;
+	}
+	
+	if(NULL != g_pszTransBuf)
+    {
+		free(g_pszTransBuf);
+		g_pszTransBuf = NULL;
+	}
+    
+	if(NULL != g_pszSha1Digest)
+    {
+		free(g_pszSha1Digest);
+		g_pszSha1Digest = NULL;
+	}
+	
     return 0;
 }
+
+/************************ (C) COPYRIGHT HIKVISION *****END OF FILE****/
+

@@ -1,15 +1,19 @@
-/** @file common.c
- *  @note 
- *  @brief 客户端公共函数
- *  
- *  @author 
- *  @date 2019年05月16日 星期四 10时58分09秒
- *  
- *  @note 
- *  
- *  @warning 
- */
 
+/***************************************************************************************
+****************************************************************************************
+* FILE     : common.c
+* Description  : 
+*            
+* Copyright (c) 2019 by Hikvision. All Rights Reserved.
+* 
+* History:
+* Version      Name        Date                Description
+   0.1         fangyuan9   2019/07/31          Initial Version 1.0.0
+   
+****************************************************************************************
+****************************************************************************************/
+
+/* Includes ------------------------------------------------------------------*/
 #include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -35,12 +39,14 @@ volatile bool       timeout = false;                //服务器发现计时标�
 /* 全局变量定义区 */
 
 
- /**@fn     gets_s
- *  @brief  带'\0'且丢掉'\n'的字符串获取函数
- *  @param c 参数描述
- *  @param n 参数描述
- *  @return 成功返回字符串地址，失败返回空
- */
+ 
+/*==================================================================
+* Function      : gets_s   
+* Description   : 字符串获取函数
+* Input Para    : p_Server:服务器指针 指向可用服务器
+* Output Para   : 无
+* Return Value  : 成功返回字符串地址，失败返回空
+==================================================================*/
 char *gets_s(char *str, size_t num, FILE *stream)
 {
     if (0 != fgets(str, num, stream))
@@ -50,16 +56,17 @@ char *gets_s(char *str, size_t num, FILE *stream)
             str[len-1] = '\0';
         return str;
     }
-    return 0;
+    return NULL;
 }
-
- /**@fn     IsExist
- *  @brief  检测链表中是否存在该IP信息
- *  @param c 参数描述
- *  @param n 参数描述
- *  @return 返回描述
- */
-bool IsExist(stServerNode *pHead, char* pIP)
+ 
+/*==================================================================
+* Function      : IsExist   
+* Description   : 检测链表中是否存在指定IP
+* Input Para    : pHead:可用服务器链表头指针 p_IP:指定服务器IP
+* Output Para   : 无
+* Return Value  : 成功返回true，失败返回false
+==================================================================*/
+bool IsExist(stServerNode *pHead, char* p_IP)
 {
     assert(pHead != NULL);
 
@@ -67,7 +74,7 @@ bool IsExist(stServerNode *pHead, char* pIP)
 
     while(pTemp != NULL)
     {
-        if(1 == strncmp(pTemp->pszIP, pIP, sizeof(pIP)))
+        if(1 == strncmp(pTemp->pszIP, p_IP, sizeof(p_IP)))
         {
             return true;
         }
@@ -78,19 +85,22 @@ bool IsExist(stServerNode *pHead, char* pIP)
 }
 
 
- /**@fn     AddNode
- *  @brief  将新节点插入头指针后
- *  @param c 参数描述
- *  @param n 参数描述
- *  @return 返回描述
- */ 
-void AddNode(stServerNode *pHead, char *pIP, uint16_t usiPort)
+/*==================================================================
+* Function      : AddNode   
+* Description   : 将指定服务器插入可用服务器链表
+* Input Para    : pHead:服务器链表头指针 p_IP:服务器指针 PortNum:端口号
+* Output Para   : 无
+* Return Value  : 无
+==================================================================*/
+void AddNode(stServerNode *pHead, char *p_IP, uint16_t PortNum)  
 {
     assert(pHead != NULL);
 
     stServerNode *pTemp = pHead->pstNext;//保存原链表第一个节点指针
 
+    /* 为新节点开辟内存 */
     stServerNode *pNode = (stServerNode *)malloc(sizeof(stServerNode));
+
     if(NULL == pNode)
     {
         printf("内存申请失败\n");
@@ -99,26 +109,30 @@ void AddNode(stServerNode *pHead, char *pIP, uint16_t usiPort)
 
     memset(pNode, 0, sizeof(stServerNode));
     
-    pNode->pszIP = (char*)malloc(strlen(pIP)+1);
+    pNode->pszIP = (char*)malloc(strlen(p_IP)+1);
+
     if(NULL == pNode->pszIP)
     {
         printf("内存申请失败\n");
         return;
     }
 
-    memset(pNode->pszIP, 0, strlen(pIP) + 1);
-    strncpy(pNode->pszIP, pIP, strlen(pIP));
-    pNode->usiPort = usiPort;
-    pNode->pstNext = pTemp;//插入节点内的指针指向原链表的第一个节点
-    pHead->pstNext = pNode;//将头节点指向插入节点
+    memset(pNode->pszIP, 0, strlen(p_IP) + 1);
+    strncpy(pNode->pszIP, p_IP, strlen(p_IP));
+
+    pNode->usiPort = PortNum;
+    pNode->pstNext = pTemp;
+    pHead->pstNext = pNode;
+
 }
 
-/**@fn      FindNode
- *  @brief  查找指定序号IP服务器信息
- *  @param c 参数描述
- *  @param n 参数描述
- *  @return 返回描述
- */
+/*==================================================================
+* Function      : FindNode   
+* Description   : 将指定服务器插入可用服务器链表
+* Input Para    : pHead:服务器链表头指针 iNum:可用服务器序号
+* Output Para   : 无
+* Return Value  : 返回可用服务器节点指针
+==================================================================*/
 stServerNode *FindNode(stServerNode *pHead, uint16_t iNum)
 {
     assert(pHead != NULL);
@@ -133,12 +147,14 @@ stServerNode *FindNode(stServerNode *pHead, uint16_t iNum)
     return pTemp;
 }
 
-/**@fn      CountNodes
- *  @brief  统计链表内有效节点数
- *  @param c 参数描述
- *  @param n 参数描述
- *  @return 返回描述
- */
+
+/*==================================================================
+* Function      : CountNodes   
+* Description   : 统计指定服务器链表中可用服务器总数
+* Input Para    : pHead:服务器链表头指针 
+* Output Para   : 无
+* Return Value  : 返回可用服务器总数
+==================================================================*/
 uint16_t CountNodes(stServerNode *pHead)
 {
     assert(pHead != NULL);
@@ -155,12 +171,14 @@ uint16_t CountNodes(stServerNode *pHead)
     return usiNum;
 }
 
- /**@fn     PrintNode
- *  @brief  打印链表中所有的IP服务器信息
- *  @param c 参数描述
- *  @param n 参数描述
- *  @return 返回描述
- */
+
+/*==================================================================
+* Function      : PrintNode   
+* Description   : 打印链表中所有服务器信息
+* Input Para    : pHead:服务器链表头指针 
+* Output Para   : 无
+* Return Value  : 无
+==================================================================*/
 void PrintNode(stServerNode *pHead)
 {
     assert(pHead != NULL);
@@ -176,12 +194,13 @@ void PrintNode(stServerNode *pHead)
     }
 }
 
-  /**@fn     DeleteList
-  *  @brief  链表资源释放
-  *  @param c 参数描述
-  *  @param n 参数描述
-  *  @return 返回描述
-  */
+/*==================================================================
+* Function      : DeleteList   
+* Description   : 删除链表中所有服务器节点
+* Input Para    : pHead:服务器链表头指针 
+* Output Para   : 无
+* Return Value  : 无
+==================================================================*/
  void DeleteList(stServerNode *pHead)
  {
     assert(pHead != NULL);
@@ -197,44 +216,51 @@ void PrintNode(stServerNode *pHead)
  }
 
 
- /**@fn     ProtocolMenu
- *  @brief  协议选项菜单
- *  @param c 参数描述
- *  @param n 参数描述
- *  @return 返回描述
- */
+/*==================================================================
+* Function      : ProtocolMenu   
+* Description   : 协议选择菜单
+* Input Para    : 无 
+* Output Para   : 无
+* Return Value  : 无
+==================================================================*/
 void ProtocolMenu(void)
 {
-    printf("请选择服务协议\n");
-    printf("     1-UDP    2-TCP\n");
+    printf("可用传输协议有:\n");
+    printf("1-UDP\n2-TCP\n");
+	printf("输入序号选择传输协议:\n");
 }
 
- /**@fn     OperateMenu
- *  @brief  传输方向操作菜单
- *  @param c 参数描述
- *  @param n 参数描述
- *  @return 返回描述
- */
+
+/*==================================================================
+* Function      : OperateMenu   
+* Description   : 操作选择菜单
+* Input Para    : 无 
+* Output Para   : 无
+* Return Value  : 无
+==================================================================*/
 void OperateMenu(void)
 {
     printf("\n");
 
-    printf("\t1-uploadfile(上传)\n");
-    printf("\t2-downloadfile(下载)\n");
+    printf("1-Uploadfile(文件上传)\n");
+    printf("2-Downloadfile(文件下载)\n");
+    printf("3-Exit(退出程序)\n");
     
-    printf("\n请选择需要进行的操作:\n");
+    printf("\n请输入所需操作序号:\n");
 }
 
- /**@fn 
- *  @brief  获取文件大小函数
- *  @param c 参数描述
- *  @param n 参数描述
- *  @return 失败返回-1，成功返回文件大小
- */
-int GetFileSize(const char* pszFilePath)
+ 
+/*==================================================================
+* Function      : GetFileSize   
+* Description   : 获取文件大小函数
+* Input Para    : 无 
+* Output Para   : 无
+* Return Value  : 失败返回-1，成功返回文件大小
+==================================================================*/
+int GetFileSize(const char* p_FilePath)   
 {
     struct stat stStat;
-    if(0 == stat(pszFilePath, &stStat))
+    if(0 == stat(p_FilePath, &stStat))
     {
         return stStat.st_size;
     }
@@ -245,74 +271,89 @@ int GetFileSize(const char* pszFilePath)
 }
 
 
- /**@fn 
- *  @brief  打印当前工作目录
- *  @param c 参数描述
- *  @param n 参数描述
- *  @return 返回描述
- */
+/*==================================================================
+* Function      : PrintWorkDir   
+* Description   : 打印当前工作路径信息
+* Input Para    : 无 
+* Output Para   : 无
+* Return Value  : 无
+==================================================================*/
 void PrintWorkDir(void)
 {
-    //printf("%d\n", PATH_MAX);
-    char *pszPath = (char*)malloc(PATH_MAX);    //存储目录变量
-    if(NULL == pszPath)
+    char *p_PathBuff = (char*)malloc(PATH_MAX);    //存储目录变量
+    
+	if(NULL == p_PathBuff)
     {
         printf("内存申请失败\n");
         return;
     }
 
-    if(NULL == getcwd(pszPath, PATH_MAX))   //获取当前目录
+    if(NULL == getcwd(p_PathBuff, PATH_MAX))   //获取当前目录
     {
         fprintf(stderr, "%s\n", strerror(errno));
         return;
     }
 
-    printf("当前工作目录为:%s\n", pszPath);
-    free(pszPath);
+    printf("当前工作目录为:%s\n", p_PathBuff);
+	
+	/* 释放路径内存 */
+	if(NULL != p_PathBuff)
+	{
+		free(p_PathBuff);
+		p_PathBuff = NULL;
+	} 
 }
 
- /**@fn     PrintDirFile
- *  @brief  打印指定目录文件列表
- *  @param c 参数描述
- *  @param n 参数描述
- *  @return 返回描述
- */
-void PrintDirFile(const char* pszDir)
+
+/*==================================================================
+* Function      : PrintDirFile   
+* Description   : 打印指定目录中文件列表
+* Input Para    : p_PathName：指向需要打印目录的路径的指针 
+* Output Para   : 无
+* Return Value  : 无
+==================================================================*/
+void PrintDirFile(const char* p_PathName)
 {
-    if(NULL == pszDir)
+    if(NULL == p_PathName)
     {
-        printf("请检查，传入参数错误！\n");
+        printf("参数错误！\n");
         return;
     }
-
-    struct dirent* pstdir;
-    DIR *dp = opendir(pszDir);
-    if (NULL == dp)
+ 	
+    struct dirent* p_stdir = NULL;
+    DIR *p_DirPath = opendir(p_PathName);
+	
+    if (NULL == p_DirPath)
     {
         fprintf(stderr, "%s\n",strerror(errno));
         return;
     }
 
-    printf("该目录文件列表如下:\n");
+    printf("该目录文件列表为:\n");
     printf("*******目录文件列表*******\n");
-    for (pstdir = readdir(dp); pstdir; pstdir = readdir(dp))
+	
+    for (p_stdir = readdir(p_DirPath); p_stdir; p_stdir = readdir(p_DirPath))
     {
-        /* 不是目录文件直接输出 */
-        if (DT_DIR != pstdir->d_type)
+        /* 不是目录文件直接输出 */ 
+        if (DT_DIR != p_stdir->d_type)
         {
-            printf ("%s\n", pstdir->d_name);
+            printf ("%s\n", p_stdir->d_name);
         }
-        /* 不输出. 和..目录文件 */
+		
+        /* 不输出. 和..目录文件 */ 
         else
         {
-            if ((0 != strncmp(pstdir->d_name, ".", 1))
-                && (0 != strncmp(pstdir->d_name, "..", 2)))
+            if ((0 != strncmp(p_stdir->d_name, ".", 1))
+                && (0 != strncmp(p_stdir->d_name, "..", 2)))
             {
-                printf ("./%s/\n", pstdir->d_name);
+                printf ("./%s/\n", p_stdir->d_name);
             }
         }
     }
-    printf("*******目录文件列表*******\n");
-
-    closedir(dp);
+	
+    printf("\n*******目录文件列表打印完毕*******\n");
+    closedir(p_DirPath);
 }
+
+/************************ (C) COPYRIGHT HIKVISION *****END OF FILE****/
+
