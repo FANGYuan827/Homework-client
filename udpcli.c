@@ -141,6 +141,7 @@ void UDP_UploadFile(int sockfd, char *p_PathName, struct sockaddr_in stServerAdd
 		fprintf(stderr, "%s\n",strerror(errno));
 		return;
 	}
+	
 	else
 	{
 		/* 接收本次发送应答 */
@@ -181,11 +182,13 @@ void UDP_UploadFile(int sockfd, char *p_PathName, struct sockaddr_in stServerAdd
 
 	/* 发送文件相关信息 */
 	rev = sendto(sockfd, (COM_TRANS_INFO_S*)g_pstComTransInfo, sizeof(COM_TRANS_INFO_S), 0, (struct sockaddr *)&stServerAddr, uliSerAddrLen);
+
 	if(SENDTO_FAIL == rev) 
 	{  
 		fprintf(stderr, "%s\n",strerror(errno));
 		return;
 	}
+
 	else
 	{
 		/* 接收本次发送应答 */
@@ -203,12 +206,6 @@ void UDP_UploadFile(int sockfd, char *p_PathName, struct sockaddr_in stServerAdd
 
 	UDP_SendFile(sockfd, p_PathName, &stServerAddr);
 
-	#if 0
-	printf("睡眠7s继续发送数据\n");
-	sleep(7);
-	UDP_SendFile(sockfd, p_PathName, &stServerAddr);
-	#endif
-	
 }
 
 

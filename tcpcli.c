@@ -139,7 +139,7 @@ void TCPService(stServerNode *p_Server)
 * Output Para   : 无
 * Return Value  : 无
 ==================================================================*/
-void TCP_UploadFile(int sockfd,char *p_PathName)    //需要改进的地方：使用了全局变量g_pstComTransInfo 需要改为参数传递的方式
+void TCP_UploadFile(int sockfd,char *p_PathName)    //需要改进的地方：使用了全局变量 g_pstComTransInfo 需要改为参数传递的方式
 {
 	int rev = 0;
 	

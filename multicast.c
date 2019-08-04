@@ -1,15 +1,19 @@
-/** @file  mulitcast.c
- *  @note 
- *  @brief 文件传输客户端
- *
- *  @author     
- *  @date       
- *
- *  @note 
- *
- *  @warning 
- */
 
+/***************************************************************************************
+****************************************************************************************
+* FILE     : multicast.c
+* Description  : 
+*            
+* Copyright (c) 2019 by Hikvision. All Rights Reserved.
+* 
+* History:
+* Version      Name        Date                Description
+   0.1         fangyuan9   2019/07/31          Initial Version 1.0.0
+   
+****************************************************************************************
+****************************************************************************************/
+
+/* Includes ------------------------------------------------------------------*/
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -24,12 +28,14 @@
 #include "common.h"
 #include "multicast.h"
 
- /**@fn     CountTime
- *  @brief  服务器发现计时线程函数
- *  @param c 参数描述
- *  @param n 参数描述
- *  @return 返回描述
- */
+
+/*==================================================================
+* Function      : CountTime   
+* Description   : 服务器发现计时线程函数
+* Input Para    : arg:
+* Output Para   : 无
+* Return Value  : 计时时间到返回true
+==================================================================*/
 void *CountTime(void *arg)
 {
     timeout = false;         //timeout:服务器发现计时标志
@@ -38,13 +44,14 @@ void *CountTime(void *arg)
     timeout = true;
 }
 
- /**@fn     ServerSearch
- *  @brief  服务器发现函数
- *  @param c 参数描述
- *  @param n 参数描述
- *  @return 返回描述
- */
- 
+
+/*==================================================================
+* Function      : ServerSearch   
+* Description   : 服务器扫描函数
+* Input Para    : pHead:用于保存服务器信息的链表头结点指针
+* Output Para   : 无
+* Return Value  : 当前网络服务器总数
+==================================================================*/
 int16_t ServerSearch(stServerNode *pHead)
 {
     int sockfd;
@@ -117,3 +124,5 @@ int16_t ServerSearch(stServerNode *pHead)
     return CountNodes(pHead);
 }
 
+
+/************************ (C) COPYRIGHT HIKVISION *****END OF FILE****/

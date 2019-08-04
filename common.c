@@ -129,17 +129,17 @@ void AddNode(stServerNode *pHead, char *p_IP, uint16_t PortNum)
 /*==================================================================
 * Function      : FindNode   
 * Description   : 将指定服务器插入可用服务器链表
-* Input Para    : pHead:服务器链表头指针 iNum:可用服务器序号
+* Input Para    : pHead:服务器链表头指针 ServerNum:可用服务器序号
 * Output Para   : 无
 * Return Value  : 返回可用服务器节点指针
 ==================================================================*/
-stServerNode *FindNode(stServerNode *pHead, uint16_t iNum)
+stServerNode *FindNode(stServerNode *pHead, uint16_t ServerNum)
 {
     assert(pHead != NULL);
 
     stServerNode *pTemp = pHead->pstNext;
 
-    while(--iNum)
+    while(--ServerNum)
     {
         pTemp = pTemp->pstNext;
     }

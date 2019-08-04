@@ -78,7 +78,7 @@ extern volatile bool       timeout;                //服务器发现计时标志
 char *gets_s(char *str, size_t num, FILE *stream);
 bool IsExist(stServerNode *pHead, char* p_IP);
 void AddNode(stServerNode *pHead, char *pIP, uint16_t usiPort);
-stServerNode *FindNode(stServerNode *pHead, uint16_t iNum);
+stServerNode *FindNode(stServerNode *pHead, uint16_t ServerNum);
 uint16_t CountNodes(stServerNode *pHead);
 void PrintNode(stServerNode *pHead);
 void DeleteList(stServerNode *pHead);
